@@ -1,0 +1,2 @@
+Sample,MeanCov,NumRawReads,pcMapped,Outcome,flag,group,CSSTested,matches,mismatches,noCoverage,anomalous
+ERR841791,40.943,2724100,99.94,Pass,BritishbTB,B6-86,3018,93.67,0.3,6.03,0.0ERR841787,34.5145,2284422,99.96,Pass,BritishbTB,B6-86,3018,94.04,0.33,5.63,0.0ERR841816,51.7823,3519920,99.96,Pass,BritishbTB,B6-86,3018,94.9,0.33,4.77,0.0
