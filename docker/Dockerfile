@@ -2,7 +2,7 @@ FROM ubuntu:18.04
 
 LABEL version="0.4.0" \
      description="APHA Bovine TB pipeline" \
-     dockerhub="oxfordmmm/apha-btb:v0.5.0"
+     dockerhub="oxfordmmm/apha-btb:v0.5.2"
 
 #Fresh update packages
 RUN apt-get update && \
@@ -104,7 +104,7 @@ ENV PATH=${PATH}:$TOOLS
 USER aphabtb
 ENTRYPOINT [ "/bin/bash" ]
 
-#To build this docker #docker build -t apha-btb:v0.5.0 .
-#To run this docker   #docker run  -it apha-btb:v0.5.0
-#To pull this docker  #docker pull oxfordmmm/apha-btb:v0.5.0
-#To tranform to Singularity #singularity build apha-btb-v0.5.0.img docker://oxfordmmm/apha-btb:v0.5.0
+#To build this docker #docker build -t apha-btb:v0.5.2 .
+#To run this docker   #docker run  -it apha-btb:v0.5.2
+#To pull this docker  #docker pull oxfordmmm/apha-btb:v0.5.2
+#To tranform to Singularity #singularity build apha-btb-v0.5.2.img docker://oxfordmmm/apha-btb:v0.5.2

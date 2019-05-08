@@ -145,6 +145,29 @@ process VarCall {
 	"""
 }
 
+/* Consensus calling */
+process VCF2Consensus {
+	tag {pair_id}
+	
+	publishDir "${params.output_dir}/consensus", mode: 'copy', pattern: '*_consensus.fas'
+	publishDir "${params.output_dir}/bcf", mode: 'copy', pattern: '*.norm-flt.bcf'
+
+	maxForks 2
+
+	input:
+	set pair_id, file("${pair_id}.pileup.vcf.gz") from vcf2
+
+	output:
+	set pair_id, file("${pair_id}_consensus.fas"), file("${pair_id}.norm-flt.bcf") into consensus
+
+	"""
+	${BCFTOOLS}/bcftools index ${pair_id}.pileup.vcf.gz
+	${BCFTOOLS}/bcftools norm -f $ref ${pair_id}.pileup.vcf.gz -Ob | ${BCFTOOLS}/bcftools filter --IndelGap 5 - -Ob -o ${pair_id}.norm-flt.bcf
+	${BCFTOOLS}/bcftools index ${pair_id}.norm-flt.bcf
+	${BCFTOOLS}/bcftools consensus -f $ref ${pair_id}.norm-flt.bcf | sed '/^>/ s/.*/>${pair_id}/' - > ${pair_id}_consensus.fas
+	"""
+}
+
 //	Combine data for generating per sample statistics
 
 raw_reads

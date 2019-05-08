@@ -269,8 +269,6 @@ strainsInfo=listT(strainsInfo)
 strainsDetails=listT([strainsInfo[pfileName][1:],strainsInfo[pmeanCov][1:],strainsInfo[totalReads][1:],strainsInfo[ppermap][1:],strainsInfo[outcome][1:]])
 
 strainsDetails=[['Sample','MeanCov','NumRawReads','pcMapped','Outcome',]]+strainsDetails
-print "Processing "+ str(len(strainsDetails))+" samples"
-
 
 patternsDetails=listT(readTable(os.path.join(pathPatterns,patternsDetailsFile),","))
 patternsBritishBTBDetails=listT(readTable(os.path.join(pathPatterns,patternsBritishBTBFile),","))
