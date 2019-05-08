@@ -10,6 +10,7 @@ ref = file(params.ref)
 refgbk = file(params.refgbk)
 stage1pat = file(params.stage1pat)
 stage2pat = file(params.stage2pat)
+adapters = file(params.adapters)
 
 /*	Collect pairs of fastq files and infer sample names */
 Channel
@@ -66,6 +67,7 @@ process Trim {
 	${pair_id}_uniq_R1.fastq ${pair_id}_uniq_R2.fastq  \
 	${pair_id}_trim_R1.fastq ${pair_id}_fail1.fastq \
 	${pair_id}_trim_R2.fastq ${pair_id}_fail2.fastq \
+	ILLUMINACLIP:${adapters}:2:30:10 \
 	SLIDINGWINDOW:10:20 MINLEN:36 
 
 	rm ${pair_id}_fail1.fastq
