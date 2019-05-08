@@ -1,9 +1,11 @@
 #!/usr/bin/env nextflow
 
-params.input_dir = "tests/data/input/"
+params.input_dir = "tests/input/"
 params.reads = "*_{1,2}.fastq.gz"
 data_path = params.input_dir + params.reads
-params.output_dir = "tests/data/output"
+params.output_dir = "tests/output"
+params.lowmem = ""
+lowmem = Channel.value("${params.lowmem}")
 
 /* location of reference information */
 ref = file(params.ref)
@@ -11,6 +13,7 @@ refgbk = file(params.refgbk)
 stage1pat = file(params.stage1pat)
 stage2pat = file(params.stage2pat)
 adapters = file(params.adapters)
+kraken2db = file(params.kraken2db)
 
 /*	Collect pairs of fastq files and infer sample names */
 Channel
@@ -260,6 +263,27 @@ process AssignClusterCSS{
 Outcome
 	.join(trim_read_pairs2)
 	.set {IDdata}
+
+/* Identify any non-M.bovis samples using kraken */
+process IDnonbovis{
+
+	tag {pair_id}
+
+	publishDir "${params.output_dir}/Kraken2", mode: 'copy', pattern: '*.tab'
+
+	maxForks 1
+
+	input:
+	set pair_id, file('outcome.txt'), file("${pair_id}_trim_R1.fastq"), file("${pair_id}_trim_R2.fastq") from IDdata
+	val lowmem from lowmem
+
+	output:
+	set pair_id, file("${pair_id}_*_kraken2.tab") optional true into IDnonbovis
+
+	"""
+		${KRAKEN2}/kraken2 --threads 2 --quick $lowmem --db $kraken2db --output - --report ${pair_id}_kraken2.tab --paired ${pair_id}_trim_R1.fastq  ${pair_id}_trim_R2.fastq 
+	"""
+}
 
 
 /* Combine all cluster assignment data into a single results file */
