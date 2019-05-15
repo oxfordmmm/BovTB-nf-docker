@@ -301,7 +301,7 @@ process IDnonbovis{
 	val lowmem from lowmem
 
 	output:
-	set pair_id, file("${pair_id}_*_kraken2.tab") optional true into IDnonbovis
+	set pair_id, file("${pair_id}_kraken2.tab") into IDnonbovis
 
 	"""
 		${KRAKEN2}/kraken2 --threads 2 --quick $lowmem --db $kraken2db --output - --report ${pair_id}_kraken2.tab --paired ${pair_id}_trim_R1.fastq  ${pair_id}_trim_R2.fastq 
