@@ -1,6 +1,6 @@
 FROM ubuntu:18.04
 
-LABEL version="0.4.0" \
+LABEL version="0.5.2" \
      description="APHA Bovine TB pipeline" \
      dockerhub="oxfordmmm/apha-btb:v0.5.2"
 
