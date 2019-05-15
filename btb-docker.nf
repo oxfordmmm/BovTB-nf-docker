@@ -1,9 +1,9 @@
 #!/usr/bin/env nextflow
 
-params.input_dir = "tests/input/"
+params.input_dir = "/data/tests/input/"
 params.reads = "*_{1,2}.fastq.gz"
 data_path = params.input_dir + params.reads
-params.output_dir = "tests/output"
+params.output_dir = "/data/tests/output"
 params.lowmem = ""
 lowmem = Channel.value("${params.lowmem}")
 
@@ -29,7 +29,7 @@ process Deduplicate {
 	
 	maxForks 2
 
-	publishDir "${params.output_dir}/Deduplicate", mode: "copy"
+	publishDir "${params.output_dir}/deduplicate", mode: "copy"
 
 	input:
 	set pair_id, file("${pair_id}_*_R1_*.fastq.gz"), file("${pair_id}_*_R2_*.fastq.gz") from read_pairs
@@ -55,7 +55,7 @@ process Trim {
 
 	maxForks 2
 
-	publishDir "${params.output_dir}/Trim", mode: "copy"
+	publishDir "${params.output_dir}/trim", mode: "copy"
 
 	input:
 	set pair_id, file("${pair_id}_uniq_R1.fastq"), file("${pair_id}_uniq_R2.fastq") from dedup_read_pairs
@@ -103,7 +103,7 @@ process Map2Ref {
 
 	maxForks 1
 
-	publishDir "${params.output_dir}/Map2Ref", mode: "copy"
+	publishDir "${params.output_dir}/map2ref", mode: "copy"
 
 	input:
 	file ref
@@ -121,13 +121,14 @@ process Map2Ref {
 	"""
 }
 
+
 /* Variant calling */
 process VarCall {
     tag {pair_id}
 
 	maxForks 4
 
-	publishDir "${params.output_dir}/VarCall", mode: "copy"
+	publishDir "${params.output_dir}/varcall", mode: "copy"
 
 	input:
 	file ref
@@ -139,9 +140,9 @@ process VarCall {
 	set pair_id, file("${pair_id}.pileup.vcf.gz") into vcf3
 
 	"""
-	${SAMTOOLS}/samtools index ${pair_id}.mapped.sorted.bam
-	${SAMTOOLS}/samtools mpileup -q 60 -uvf $ref ${pair_id}.mapped.sorted.bam |
-	${BCFTOOLS}/bcftools call --ploidy Y -cf GQ - -Oz -o ${pair_id}.pileup.vcf.gz
+	${SAMTOOLS}/samtools index ${pair_id}.mapped.sorted.bam	
+	${BCFTOOLS}/bcftools mpileup -q 60 -Ou -f $ref ${pair_id}.mapped.sorted.bam \
+	| ${BCFTOOLS}/bcftools call --ploidy 1 -cf GQ - -Oz -o  ${pair_id}.pileup.vcf.gz
 	"""
 }
 
@@ -188,7 +189,7 @@ process ReadStats{
 
 	maxForks 2
 
-	publishDir "${params.output_dir}/ReadStats", mode: "copy"
+	publishDir "${params.output_dir}/readstats", mode: "copy"
 
 	input:
 	set pair_id, file("${pair_id}_*_R1_*.fastq.gz"), file("${pair_id}_*_R2_*.fastq.gz"), file("${pair_id}_uniq_R1.fastq"), file("${pair_id}_uniq_R2.fastq"), file("${pair_id}_trim_R1.fastq"), file("${pair_id}_trim_R2.fastq"), file("${pair_id}.mapped.sorted.bam") from input4stats
@@ -235,7 +236,7 @@ process SNPfiltAnnot{
 
 	maxForks 4
 
-	publishDir "${params.output_dir}/SNPfiltAnnot", mode: "copy"
+	publishDir "${params.output_dir}/snpfiltannot", mode: "copy"
 
 	input:
 	file ref
@@ -267,7 +268,7 @@ process AssignClusterCSS{
 
 	maxForks 2
 
-	publishDir "${params.output_dir}/AssignClusterCSS", mode: "copy"
+	publishDir "${params.output_dir}/assignclustercss", mode: "copy"
 
 	input:
 	file ref
@@ -292,7 +293,7 @@ process IDnonbovis{
 
 	tag {pair_id}
 
-	publishDir "${params.output_dir}/Kraken2", mode: 'copy', pattern: '*.tab'
+	publishDir "${params.output_dir}/kraken2", mode: 'copy', pattern: '*.tab'
 
 	maxForks 1
 
@@ -304,7 +305,7 @@ process IDnonbovis{
 	set pair_id, file("${pair_id}_kraken2.tab") into IDnonbovis
 
 	"""
-		${KRAKEN2}/kraken2 --threads 2 --quick $lowmem --db $kraken2db --output - --report ${pair_id}_kraken2.tab --paired ${pair_id}_trim_R1.fastq  ${pair_id}_trim_R2.fastq 
+	${KRAKEN2}/kraken2 --threads 2 --quick $lowmem --db $kraken2db --output - --report ${pair_id}_kraken2.tab --paired ${pair_id}_trim_R1.fastq  ${pair_id}_trim_R2.fastq 
 	"""
 }
 
