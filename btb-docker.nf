@@ -27,7 +27,7 @@ Channel
 process Deduplicate {
     tag {pair_id}
 	
-	maxForks 2
+	memory '2 GB'
 
 	publishDir "${params.output_dir}/deduplicate", mode: "copy"
 
@@ -53,7 +53,7 @@ process Deduplicate {
 process Trim {
 	tag {pair_id}
 
-	maxForks 2
+	memory '21 GB'
 
 	publishDir "${params.output_dir}/trim", mode: "copy"
 
@@ -83,6 +83,8 @@ process Trim {
 process BWA_Index {
     tag {ref}
 
+	memory '1 GB'
+
     publishDir "${params.output_dir}/indexed_ref", mode: "copy"
 
     input:
@@ -101,7 +103,7 @@ process BWA_Index {
 process Map2Ref {
     tag {pair_id}
 
-	maxForks 1
+	memory '3 GB'
 
 	publishDir "${params.output_dir}/map2ref", mode: "copy"
 
@@ -126,7 +128,7 @@ process Map2Ref {
 process VarCall {
     tag {pair_id}
 
-	maxForks 4
+	memory '1 GB'
 
 	publishDir "${params.output_dir}/varcall", mode: "copy"
 
@@ -149,6 +151,8 @@ process VarCall {
 /* Consensus calling */
 process VCF2Consensus {
 	tag {pair_id}
+
+	memory '1 GB'
 	
 	publishDir "${params.output_dir}/consensus", mode: 'copy', pattern: '*_consensus.fas'
 	publishDir "${params.output_dir}/bcf", mode: 'copy', pattern: '*.norm-flt.bcf'
@@ -187,7 +191,7 @@ raw_uniq
 process ReadStats{
     tag {pair_id}
 
-	maxForks 2
+	memory '1 GB'
 
 	publishDir "${params.output_dir}/readstats", mode: "copy"
 
@@ -234,7 +238,7 @@ process ReadStats{
 process SNPfiltAnnot{
     tag {pair_id}
 
-	maxForks 4
+	memory '1 GB'
 
 	publishDir "${params.output_dir}/snpfiltannot", mode: "copy"
 
@@ -266,7 +270,7 @@ vcf
 process AssignClusterCSS{
     tag {pair_id}
 
-	maxForks 2
+	memory '5 GB'
 
 	publishDir "${params.output_dir}/assignclustercss", mode: "copy"
 
@@ -295,7 +299,7 @@ process IDnonbovis{
 
 	publishDir "${params.output_dir}/kraken2", mode: 'copy', pattern: '*.tab'
 
-	maxForks 1
+	memory '9 GB'
 
 	input:
 	set pair_id, file('outcome.txt'), file("${pair_id}_trim_R1.fastq"), file("${pair_id}_trim_R2.fastq") from IDdata
