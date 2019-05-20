@@ -29,7 +29,7 @@ process Deduplicate {
 	
 	memory '2 GB'
 
-	publishDir "${params.output_dir}/deduplicate", mode: "copy"
+	//publishDir "${params.output_dir}/deduplicate", mode: "copy"
 
 	input:
 	set pair_id, file("${pair_id}_*_R1_*.fastq.gz"), file("${pair_id}_*_R2_*.fastq.gz") from read_pairs
@@ -55,7 +55,7 @@ process Trim {
 
 	memory '21 GB'
 
-	publishDir "${params.output_dir}/trim", mode: "copy"
+	//publishDir "${params.output_dir}/trim", mode: "copy"
 
 	input:
 	set pair_id, file("${pair_id}_uniq_R1.fastq"), file("${pair_id}_uniq_R2.fastq") from dedup_read_pairs
@@ -154,7 +154,7 @@ process VCF2Consensus {
 
 	memory '1 GB'
 	
-	publishDir "${params.output_dir}/consensus", mode: 'copy', pattern: '*_consensus.fas'
+	publishDir "${params.output_dir}/consensus", mode: 'copy', pattern: '*_consensus.fas.gz'
 	publishDir "${params.output_dir}/bcf", mode: 'copy', pattern: '*.norm-flt.bcf'
 
 	maxForks 2
@@ -170,6 +170,7 @@ process VCF2Consensus {
 	${BCFTOOLS}/bcftools norm -f $ref ${pair_id}.pileup.vcf.gz -Ob | ${BCFTOOLS}/bcftools filter --IndelGap 5 - -Ob -o ${pair_id}.norm-flt.bcf
 	${BCFTOOLS}/bcftools index ${pair_id}.norm-flt.bcf
 	${BCFTOOLS}/bcftools consensus -f $ref ${pair_id}.norm-flt.bcf | sed '/^>/ s/.*/>${pair_id}/' - > ${pair_id}_consensus.fas
+	cat ${pair_id}_consensus.fas | gzip -c > ${pair_id}_consensus.fas.gz
 	"""
 }
 
@@ -316,7 +317,7 @@ process IDnonbovis{
 
 /* Combine all cluster assignment data into a single results file */
 AssignCluster
-	.collectFile( name: 'AssignedWGSCluster.csv', sort: true, storeDir: "${params.output_dir}/AssignClusterCSS", keepHeader: true )
+	.collectFile( name: 'AssignedWGSCluster.csv', sort: true, storeDir: "${params.output_dir}/assignclustercss", keepHeader: true )
 
 
 workflow.onComplete {
