@@ -154,8 +154,8 @@ process VCF2Consensus {
 
 	memory '1 GB'
 	
-	publishDir "${params.output_dir}/consensus", mode: 'copy', pattern: '*_consensus.fas.gz'
-	publishDir "${params.output_dir}/bcf", mode: 'copy', pattern: '*.norm-flt.bcf'
+	publishDir "${params.output_dir}/consensus", mode: 'copy'
+	publishDir "${params.output_dir}/bcf", mode: 'copy'
 
 	maxForks 2
 
@@ -163,7 +163,8 @@ process VCF2Consensus {
 	set pair_id, file("${pair_id}.pileup.vcf.gz") from vcf2
 
 	output:
-	set pair_id, file("${pair_id}_consensus.fas"), file("${pair_id}.norm-flt.bcf") into consensus
+        file("${pair_id}_consensus.fas.gz")
+        file("${pair_id}.norm-flt.bcf")
 
 	"""
 	${BCFTOOLS}/bcftools index ${pair_id}.pileup.vcf.gz
