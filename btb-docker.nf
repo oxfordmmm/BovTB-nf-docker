@@ -25,6 +25,8 @@ Channel
 
 /* remove duplicates from raw data */
 process Deduplicate {
+	label "btb"
+
     tag {pair_id}
 	
 	memory '2 GB'
@@ -51,6 +53,9 @@ process Deduplicate {
 /* trim adapters and low quality bases from fastq data */
 /* ILLUMINACLIP:/home/richard/ReferenceSequences/adapter.fasta:2:30:10 \ */
 process Trim {
+
+	label "btb"
+
 	tag {pair_id}
 
 	memory '21 GB'
@@ -81,6 +86,9 @@ process Trim {
 
 // Building index for ref fasta
 process BWA_Index {
+
+	label "btb"
+
     tag {ref}
 
 	memory '1 GB'
@@ -101,6 +109,9 @@ process BWA_Index {
 
 /* map to reference sequence */
 process Map2Ref {
+
+	label "btb"
+
     tag {pair_id}
 
 	memory '3 GB'
@@ -126,6 +137,8 @@ process Map2Ref {
 
 /* Variant calling */
 process VarCall {
+	label "btb"
+
     tag {pair_id}
 
 	memory '1 GB'
@@ -149,30 +162,35 @@ process VarCall {
 }
 
 /* Consensus calling */
-process VCF2Consensus {
-	tag {pair_id}
+process consensus_to_fasta {
 
-	memory '1 GB'
-	
-	publishDir "${params.output_dir}/consensus", mode: 'copy', pattern: '*_consensus.fas.gz'
-	publishDir "${params.output_dir}/bcf", mode: 'copy', pattern: '*.norm-flt.bcf'
+    label "consensus"
+    memory '5 GB'
 
-	maxForks 2
+    publishDir "${params.output_dir}/consensus", mode: 'copy'
+    tag { pair_id }
 
-	input:
-	set pair_id, file("${pair_id}.pileup.vcf.gz") from vcf2
+    input:
+    set pair_id, file("${pair_id}.pileup.vcf.gz") from vcf2
 
-	output:
-	set pair_id, file("${pair_id}_consensus.fas"), file("${pair_id}.norm-flt.bcf") into consensus
+    
+    output:
+    file("${pair_id}.final.fasta")
 
-	"""
-	${BCFTOOLS}/bcftools index ${pair_id}.pileup.vcf.gz
-	${BCFTOOLS}/bcftools norm -f $ref ${pair_id}.pileup.vcf.gz -Ob | ${BCFTOOLS}/bcftools filter --IndelGap 5 - -Ob -o ${pair_id}.norm-flt.bcf
-	${BCFTOOLS}/bcftools index ${pair_id}.norm-flt.bcf
-	${BCFTOOLS}/bcftools consensus -f $ref ${pair_id}.norm-flt.bcf | sed '/^>/ s/.*/>${pair_id}/' - > ${pair_id}_consensus.fas
-	cat ${pair_id}_consensus.fas | gzip -c > ${pair_id}_consensus.fas.gz
-	"""
+    """
+	set -x
+	zcat ${pair_id}.pileup.vcf.gz > ${pair_id}.pileup.vcf 
+	rm ${pair_id}.pileup.vcf.gz
+	bgzip ${pair_id}.pileup.vcf 
+	bcftools index ${pair_id}.pileup.vcf.gz
+	bcftools view --exclude-types indels ${pair_id}.pileup.vcf.gz > ${pair_id}-no-indels.pileup.vcf
+	bgzip ${pair_id}-no-indels.pileup.vcf
+	bcftools index ${pair_id}-no-indels.pileup.vcf.gz
+    cat $ref | bcftools consensus ${pair_id}-no-indels.pileup.vcf.gz > ${pair_id}.final.fasta
+
+    """
 }
+
 
 //	Combine data for generating per sample statistics
 
@@ -190,6 +208,9 @@ raw_uniq
 
 /* Mapping Statistics*/
 process ReadStats{
+
+	label "btb"
+
     tag {pair_id}
 
 	memory '1 GB'
@@ -237,6 +258,9 @@ process ReadStats{
 
 /* SNP filtering and annotation */
 process SNPfiltAnnot{
+
+	label "btb"
+
     tag {pair_id}
 
 	memory '1 GB'
@@ -269,6 +293,9 @@ vcf
 
 /* Assigns cluster by matching patterns of cluster specific SNPs. Also suggests inferred historical genotype */
 process AssignClusterCSS{
+
+	label "btb"
+
     tag {pair_id}
 
 	memory '5 GB'
@@ -295,6 +322,8 @@ Outcome
 
 /* Identify any non-M.bovis samples using kraken */
 process IDnonbovis{
+
+	label "btb"
 
 	tag {pair_id}
 
