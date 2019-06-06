@@ -116,7 +116,7 @@ process Map2Ref {
 
 	memory '3 GB'
 
-	publishDir "${params.output_dir}/map2ref", mode: "copy"
+	//publishDir "${params.output_dir}/map2ref", mode: "copy"
 
 	input:
 	file ref
@@ -175,7 +175,7 @@ process consensus_to_fasta {
 
     
     output:
-    file("${pair_id}.final.fasta")
+    file("${pair_id}.final.fasta.gz")
 
     """
 	set -x
@@ -187,6 +187,7 @@ process consensus_to_fasta {
 	bgzip ${pair_id}-no-indels.pileup.vcf
 	bcftools index ${pair_id}-no-indels.pileup.vcf.gz
     cat $ref | bcftools consensus ${pair_id}-no-indels.pileup.vcf.gz > ${pair_id}.final.fasta
+	gzip  ${pair_id}.final.fasta
 
     """
 }
