@@ -156,8 +156,10 @@ process VarCall {
 
 	"""
 	${SAMTOOLS}/samtools index ${pair_id}.mapped.sorted.bam	
-	${BCFTOOLS}/bcftools mpileup -q 60 -Ou -f $ref ${pair_id}.mapped.sorted.bam \
-	| ${BCFTOOLS}/bcftools call --ploidy 1 -cf GQ - -Oz -o  ${pair_id}.pileup.vcf.gz
+	${BCFTOOLS}/bcftools mpileup -Q 30 -q 60 -Ou -f $ref ${pair_id}.mapped.sorted.bam \
+	| ${BCFTOOLS}/bcftools call --ploidy 1 -cf GQ - -Ou  \
+	| ${BCFTOOLS}/bcftools norm -f $ref - -Ou  \
+	| ${BCFTOOLS}/bcftools filter --SnpGap 5 --IndelGap 5 - -Oz -o  ${pair_id}.pileup.vcf.gz
 	"""
 }
 
