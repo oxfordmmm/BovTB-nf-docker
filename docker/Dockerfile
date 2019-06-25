@@ -1,8 +1,8 @@
 FROM ubuntu:18.04
 
-LABEL version="0.5.2" \
+LABEL version="0.5.3" \
      description="APHA Bovine TB pipeline" \
-     dockerhub="oxfordmmm/apha-btb:v0.5.2"
+     dockerhub="oxfordmmm/apha-btb:v0.5.3"
 
 #Fresh update packages
 RUN apt-get update && \
@@ -19,6 +19,9 @@ RUN apt install -y \
        python \
        python-numpy \
        python-pip \
+       python3-pip \
+       python3-biopython \
+       tabix \
        unzip \
        wget \
        zip \
@@ -86,6 +89,12 @@ RUN wget http://github.com/DerrickWood/kraken2/archive/v2.0.8-beta.tar.gz && tar
 WORKDIR /biotools/kraken2-2.0.8-beta
 RUN ./install_kraken2.sh ../Kraken2
 
+#blast2.9.0
+WORKDIR /biotools
+RUN wget ftp://ftp.ncbi.nlm.nih.gov/blast/executables/LATEST/ncbi-blast-2.9.0+-x64-linux.tar.gz
+RUN tar zxvpf ncbi-blast-2.9.0+-x64-linux.tar.gz && rm -f ncbi-blast-2.9.0+-x64-linux.tar.gz
+
+
 #create btb user
 RUN groupadd fuse && \
     useradd --create-home --shell /bin/bash --user-group --uid 1000 --groups sudo,fuse aphabtb && \
@@ -104,7 +113,7 @@ ENV PATH=${PATH}:$TOOLS
 USER aphabtb
 ENTRYPOINT [ "/bin/bash" ]
 
-#To build this docker #docker build -t apha-btb:v0.5.2 .
-#To run this docker   #docker run  -it apha-btb:v0.5.2
-#To pull this docker  #docker pull oxfordmmm/apha-btb:v0.5.2
-#To tranform to Singularity #singularity build apha-btb-v0.5.2.img docker://oxfordmmm/apha-btb:v0.5.2
+#To build this docker #docker build -t apha-btb:v0.5.3 .
+#To run this docker   #docker run  -it apha-btb:v0.5.3
+#To pull this docker  #docker pull oxfordmmm/apha-btb:v0.5.3
+#To tranform to Singularity #singularity build apha-btb-v0.5.3.img docker://oxfordmmm/apha-btb:v0.5.3

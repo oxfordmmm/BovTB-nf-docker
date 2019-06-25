@@ -1,6 +1,6 @@
 work/*
 tests/*
-
+krakendb/*
 .nextflow/
 .nextflow.log
 .nextflow.log.*

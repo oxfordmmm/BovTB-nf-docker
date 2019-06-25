@@ -103,7 +103,15 @@ process BWA_Index {
 
     script:
     """
-    $BWA/bwa index ${ref}
+    ${BWA}/bwa index ${ref}
+    
+    ${SAMTOOLS}/samtools faidx ${ref}   
+	${BLAST}/makeblastdb -dbtype nucl -in ${ref}   
+    genRefMask.py -r ${ref} -m 200 -p 95
+    bgzip -c ${ref}.rpt.regions > ${ref}.rpt_mask.gz
+	echo '##INFO=<ID=RPT,Number=1,Type=Integer,Description="Flag for variant in repetitive region">' > ${ref}.rpt_mask.hdr
+	tabix -s1 -b2 -e3 ${ref}.rpt_mask.gz
+
     """
 }
 
@@ -162,38 +170,6 @@ process VarCall {
 	| ${BCFTOOLS}/bcftools filter --SnpGap 5 --IndelGap 5 - -Oz -o  ${pair_id}.pileup.vcf.gz
 	"""
 }
-
-/* Consensus calling */
-process consensus_to_fasta {
-
-    label "consensus"
-    memory '5 GB'
-
-    publishDir "${params.output_dir}/consensus", mode: 'copy'
-    tag { pair_id }
-
-    input:
-    set pair_id, file("${pair_id}.pileup.vcf.gz") from vcf2
-
-    
-    output:
-    file("${pair_id}.final.fasta.gz")
-
-    """
-	set -x
-	zcat ${pair_id}.pileup.vcf.gz > ${pair_id}.pileup.vcf 
-	rm ${pair_id}.pileup.vcf.gz
-	bgzip ${pair_id}.pileup.vcf 
-	bcftools index ${pair_id}.pileup.vcf.gz
-	bcftools view --exclude-types indels ${pair_id}.pileup.vcf.gz > ${pair_id}-no-indels.pileup.vcf
-	bgzip ${pair_id}-no-indels.pileup.vcf
-	bcftools index ${pair_id}-no-indels.pileup.vcf.gz
-    cat $ref | bcftools consensus ${pair_id}-no-indels.pileup.vcf.gz > ${pair_id}.final.fasta
-	gzip  ${pair_id}.final.fasta
-
-    """
-}
-
 
 //	Combine data for generating per sample statistics
 
