@@ -101,7 +101,6 @@ process BWA_Index {
     output:
         file "*" into bwa_index
 
-    script:
     """
     ${BWA}/bwa index ${ref}
     
@@ -257,11 +256,11 @@ process SNPfiltAnnot{
 
 	"""
 	${BCFTOOLS}/bcftools view -O v ${pair_id}.pileup.vcf.gz \
-	| python ${SCRIPT_PATH}/snpsFilter.py - ${min_cov_snp} ${alt_prop_snp} ${min_qual_snp}
+	| snpsFilter.py - ${min_cov_snp} ${alt_prop_snp} ${min_qual_snp}
 	mv _DUO.csv ${pair_id}.pileup_DUO.csv
 	mv _INDEL.csv ${pair_id}.pileup_INDEL.csv
 	mv _SN.csv ${pair_id}.pileup_SN.csv
-	python ${SCRIPT_PATH}/annotateSNPs.py ${pair_id}.pileup_SN.csv ${refgbk} ${ref}
+	annotateSNPs.py ${pair_id}.pileup_SN.csv ${refgbk} ${ref}
 	"""
 }
 
@@ -290,7 +289,7 @@ process AssignClusterCSS{
 
 	"""
 	gunzip -c ${pair_id}.pileup.vcf.gz > ${pair_id}.pileup.vcf
-	python ${SCRIPT_PATH}/Stage1-test.py ${pair_id}_stats.csv ${stage1pat} ${ref} test 1 ${min_mean_cov} ${min_cov_snp} ${alt_prop_snp} ${min_qual_snp} ${min_qual_nonsnp} ${pair_id}.pileup.vcf
+	Stage1-test.py ${pair_id}_stats.csv ${stage1pat} ${ref} test 1 ${min_mean_cov} ${min_cov_snp} ${alt_prop_snp} ${min_qual_snp} ${min_qual_nonsnp} ${pair_id}.pileup.vcf
 	mv _stage1.csv ${pair_id}_stage1.csv
 	"""
 }

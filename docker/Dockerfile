@@ -1,8 +1,8 @@
 FROM ubuntu:18.04
 
-LABEL version="0.5.3" \
+LABEL version="0.5.4" \
      description="APHA Bovine TB pipeline" \
-     dockerhub="oxfordmmm/apha-btb:v0.5.3"
+     dockerhub="oxfordmmm/apha-btb:v0.5.4"
 
 #Fresh update packages
 RUN apt-get update && \
@@ -101,10 +101,6 @@ RUN groupadd fuse && \
     echo `echo "aphabtb\naphabtb\n" | passwd aphabtb` && \
     chown aphabtb:aphabtb /home/aphabtb
 
-# script
-WORKDIR /home/aphabtb
-COPY pyscripts pyscripts
-
 #env
 ENV TOOLS=/biotools
 ENV PATH=${PATH}:$TOOLS
@@ -113,7 +109,7 @@ ENV PATH=${PATH}:$TOOLS
 USER aphabtb
 ENTRYPOINT [ "/bin/bash" ]
 
-#To build this docker #docker build -t apha-btb:v0.5.3 .
-#To run this docker   #docker run  -it apha-btb:v0.5.3
-#To pull this docker  #docker pull oxfordmmm/apha-btb:v0.5.3
-#To tranform to Singularity #singularity build apha-btb-v0.5.3.img docker://oxfordmmm/apha-btb:v0.5.3
+#To build this docker #docker build -t apha-btb:v0.5.4 .
+#To run this docker   #docker run  -it apha-btb:v0.5.4
+#To pull this docker  #docker pull oxfordmmm/apha-btb:v0.5.4
+#To tranform to Singularity #singularity build apha-btb-v0.5.4.img docker://oxfordmmm/apha-btb:v0.5.4
