@@ -85,7 +85,7 @@ process Trim {
 
 
 // Building index for ref fasta
-process BWA_Index {
+process BWAIndex {
 
 	label "btb"
 
@@ -101,11 +101,40 @@ process BWA_Index {
     output:
         file "*" into bwa_index
 
-    script:
     """
-    $BWA/bwa index ${ref}
+    ${BWA}/bwa index ${ref}
     """
 }
+
+process MaskRef {
+
+	label "btb"
+
+    tag {ref}
+
+	memory '1 GB'
+
+    publishDir "${params.output_dir}/masked_ref", mode: "copy"
+
+    input:
+        file ref
+
+    output:
+        file "*" into mask_ref
+
+    """
+    ${BWA}/bwa index ${ref}
+    ${SAMTOOLS}/samtools faidx ${ref}   
+	${BLAST}/makeblastdb -dbtype nucl -in ${ref}   
+    genRefMask.py -r ${ref} -m 200 -p 95
+    bgzip -c ${ref}.rpt.regions > ${ref}.rpt_mask.gz
+	echo '##INFO=<ID=RPT,Number=1,Type=Integer,Description="Flag for variant in repetitive region">' > ${ref}.rpt_mask.hdr
+	tabix -s1 -b2 -e3 ${ref}.rpt_mask.gz
+
+    """
+}
+
+
 
 /* map to reference sequence */
 process Map2Ref {
@@ -150,48 +179,17 @@ process VarCall {
 	set pair_id, file("${pair_id}.mapped.sorted.bam") from mapped_bam
 
 	output:
-	set pair_id, file("${pair_id}.pileup.vcf.gz") into vcf
-	set pair_id, file("${pair_id}.pileup.vcf.gz") into vcf2
-	set pair_id, file("${pair_id}.pileup.vcf.gz") into vcf3
+	set pair_id, file("${pair_id}.pileup.vcf.gz") into var4clustering
+	set pair_id, file("${pair_id}.pileup.vcf.gz") into var4filtering
 
 	"""
 	${SAMTOOLS}/samtools index ${pair_id}.mapped.sorted.bam	
-	${BCFTOOLS}/bcftools mpileup -q 60 -Ou -f $ref ${pair_id}.mapped.sorted.bam \
-	| ${BCFTOOLS}/bcftools call --ploidy 1 -cf GQ - -Oz -o  ${pair_id}.pileup.vcf.gz
+	${BCFTOOLS}/bcftools mpileup -Q 30 -q 60 -Ou -f $ref ${pair_id}.mapped.sorted.bam \
+	| ${BCFTOOLS}/bcftools call --ploidy 1 -cf GQ - -Ou  \
+	| ${BCFTOOLS}/bcftools norm -f $ref - -Ou  \
+	| ${BCFTOOLS}/bcftools filter --SnpGap 5 --IndelGap 5 - -Oz -o  ${pair_id}.pileup.vcf.gz
 	"""
 }
-
-/* Consensus calling */
-process consensus_to_fasta {
-
-    label "consensus"
-    memory '5 GB'
-
-    publishDir "${params.output_dir}/consensus", mode: 'copy'
-    tag { pair_id }
-
-    input:
-    set pair_id, file("${pair_id}.pileup.vcf.gz") from vcf2
-
-    
-    output:
-    file("${pair_id}.final.fasta.gz")
-
-    """
-	set -x
-	zcat ${pair_id}.pileup.vcf.gz > ${pair_id}.pileup.vcf 
-	rm ${pair_id}.pileup.vcf.gz
-	bgzip ${pair_id}.pileup.vcf 
-	bcftools index ${pair_id}.pileup.vcf.gz
-	bcftools view --exclude-types indels ${pair_id}.pileup.vcf.gz > ${pair_id}-no-indels.pileup.vcf
-	bgzip ${pair_id}-no-indels.pileup.vcf
-	bcftools index ${pair_id}-no-indels.pileup.vcf.gz
-    cat $ref | bcftools consensus ${pair_id}-no-indels.pileup.vcf.gz > ${pair_id}.final.fasta
-	gzip  ${pair_id}.final.fasta
-
-    """
-}
-
 
 //	Combine data for generating per sample statistics
 
@@ -257,40 +255,78 @@ process ReadStats{
 	'''	
 }
 
-/* SNP filtering and annotation */
-process SNPfiltAnnot{
 
+/* SNP filtering and annotation */
+
+process Filtering{
 	label "btb"
 
     tag {pair_id}
 
 	memory '1 GB'
 
-	publishDir "${params.output_dir}/snpfiltannot", mode: "copy"
+	publishDir "${params.output_dir}/variantfiltering", mode: "copy"
 
 	input:
 	file ref
 	file refgbk
-	set pair_id, file("${pair_id}.pileup.vcf.gz") from vcf3
+	file "*" from mask_ref
+	set pair_id, file("${pair_id}.pileup.vcf.gz") from var4filtering
 
 	output:
-	set pair_id, file("${pair_id}.pileup_SN.csv"), file("${pair_id}.pileup_DUO.csv"), file("${pair_id}.pileup_INDEL.csv") into VarTables
-	set pair_id, file("${pair_id}.pileup_SN_Annotation.csv") into VarAnnotation
+	set pair_id, file("${pair_id}.snps-filter.vcf.gz"),file("${pair_id}.snps-filter.vcf.gz.csi"), file("${pair_id}.zero-cov.vcf.gz"), file("${pair_id}.zero-cov.vcf.gz.csi") into filtered
 
 	"""
-	${BCFTOOLS}/bcftools view -O v ${pair_id}.pileup.vcf.gz \
-	| python ${SCRIPT_PATH}/snpsFilter.py - ${min_cov_snp} ${alt_prop_snp} ${min_qual_snp}
-	mv _DUO.csv ${pair_id}.pileup_DUO.csv
-	mv _INDEL.csv ${pair_id}.pileup_INDEL.csv
-	mv _SN.csv ${pair_id}.pileup_SN.csv
-	python ${SCRIPT_PATH}/annotateSNPs.py ${pair_id}.pileup_SN.csv ${refgbk} ${ref}
+	${BCFTOOLS}/bcftools annotate -a ${ref}.rpt_mask.gz -c CHROM,FROM,TO,RPT  \
+	-h ${ref}.rpt_mask.hdr ${pair_id}.pileup.vcf.gz -Ob -o ${pair_id}.pileup.masked.bcf.gz 
+
+	${BCFTOOLS}/bcftools filter -s Q150 -e '%QUAL<150' -Ou ${pair_id}.pileup.masked.bcf.gz | \
+	${BCFTOOLS}/bcftools filter -s HetroZ -e "GT='het'" -m+ -Ou | \
+	${BCFTOOLS}/bcftools filter -s OneEachWay -e 'DP4[2] == 0 || DP4[3] ==0' -m+ -Ou | \
+    ${BCFTOOLS}/bcftools filter -s RptRegion -e 'RPT=1' -m+ -Ou | \
+    ${BCFTOOLS}/bcftools filter -s Consensus90 -e '((DP4[2]+DP4[3])/(DP4[0]+DP4[1]+DP4[2]+DP4[3]))<=0.9' -m+ -Ou | \
+    ${BCFTOOLS}/bcftools filter -s HQDepth200 -e '(DP4[0]+DP4[1]+DP4[2]+DP4[3])>=200' -m+ -Oz | \
+	${BCFTOOLS}/bcftools filter -s HQDepth5 -e '(DP4[2]+DP4[3])<=5' -m+ -Oz -o  ${pair_id}.masked.vcf.gz
+	${BCFTOOLS}/bcftools filter -i 'TYPE="snp"' -m+ -Oz -o ${pair_id}.snps.vcf.gz ${pair_id}.masked.vcf.gz
+    
+	${BCFTOOLS}/bcftools index ${pair_id}.snps.vcf.gz
+	${BCFTOOLS}/bcftools filter -S . -e 'FILTER!="PASS"' -Oz -o ${pair_id}.snps-filter.vcf.gz ${pair_id}.snps.vcf.gz
+	${BCFTOOLS}/bcftools index ${pair_id}.snps-filter.vcf.gz
+
+	${BCFTOOLS}/bcftools filter -S . -e 'DP=0' -Ob ${pair_id}.masked.vcf.gz | \
+	${BCFTOOLS}/bcftools filter -e 'DP>0' -Oz -o ${pair_id}.zero-cov.vcf.gz
+	${BCFTOOLS}/bcftools index ${pair_id}.zero-cov.vcf.gz
+	"""
+}
+
+process Consensus{
+	label "btb"
+
+    tag {pair_id}
+
+	memory '1 GB'
+
+	publishDir "${params.output_dir}/consensuscalling", mode: "copy"
+
+	input:
+	file ref
+	file index from bwa_index
+	set pair_id, file("${pair_id}.snps-filter.vcf.gz"), file("${pair_id}.snps-filter.vcf.gz.csi"), file("${pair_id}.zero-cov.vcf.gz"), file("${pair_id}.zero-cov.vcf.gz.csi") from filtered
+
+	output:
+	set pair_id, file("${pair_id}.fasta") into consensus
+
+	"""
+	cat $ref | ${BCFTOOLS}/bcftools consensus -H 1 -M "N" ${pair_id}.snps-filter.vcf.gz > ${pair_id}.tmp.fa
+	${SAMTOOLS}/samtools faidx ${pair_id}.tmp.fa
+	cat ${pair_id}.tmp.fa | ${BCFTOOLS}/bcftools consensus -H 1 -M "-" ${pair_id}.zero-cov.vcf.gz | sed '/^>/ s/.*/>${pair_id}/' - > ${pair_id}.fa  >  ${pair_id}.fasta
 	"""
 }
 
 /*	Combine data for assign cluster for each sample*/
-vcf
+var4clustering
 	.join(stats)
-	.set { input4Assign }
+	.set { input4assign }
 
 /* Assigns cluster by matching patterns of cluster specific SNPs. Also suggests inferred historical genotype */
 process AssignClusterCSS{
@@ -305,14 +341,14 @@ process AssignClusterCSS{
 
 	input:
 	file ref
-	set pair_id, file("${pair_id}.pileup.vcf.gz"), file("${pair_id}_stats.csv") from input4Assign
+	set pair_id, file("${pair_id}.pileup.vcf.gz"), file("${pair_id}_stats.csv") from input4assign
 
 	output:
-	file("${pair_id}_stage1.csv") into AssignCluster
+	file("${pair_id}_stage1.csv") into assigncluster
 
 	"""
 	gunzip -c ${pair_id}.pileup.vcf.gz > ${pair_id}.pileup.vcf
-	python ${SCRIPT_PATH}/Stage1-test.py ${pair_id}_stats.csv ${stage1pat} ${ref} test 1 ${min_mean_cov} ${min_cov_snp} ${alt_prop_snp} ${min_qual_snp} ${min_qual_nonsnp} ${pair_id}.pileup.vcf
+	Stage1-test.py ${pair_id}_stats.csv ${stage1pat} ${ref} test 1 ${min_mean_cov} ${min_cov_snp} ${alt_prop_snp} ${min_qual_snp} ${min_qual_nonsnp} ${pair_id}.pileup.vcf
 	mv _stage1.csv ${pair_id}_stage1.csv
 	"""
 }
@@ -346,7 +382,7 @@ process IDnonbovis{
 
 
 /* Combine all cluster assignment data into a single results file */
-AssignCluster
+assigncluster
 	.collectFile( name: 'AssignedWGSCluster.csv', sort: true, storeDir: "${params.output_dir}/assignclustercss", keepHeader: true )
 
 
