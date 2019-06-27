@@ -4,8 +4,6 @@ params.input_dir = "/data/tests/input/"
 params.reads = "*_{1,2}.fastq.gz"
 data_path = params.input_dir + params.reads
 params.output_dir = "/data/tests/output"
-params.lowmem = ""
-lowmem = Channel.value("${params.lowmem}")
 
 /* location of reference information */
 ref = file(params.ref)
@@ -29,7 +27,7 @@ process Deduplicate {
 
     tag {pair_id}
 	
-	memory '2 GB'
+	memory '3 GB'
 
 	//publishDir "${params.output_dir}/deduplicate", mode: "copy"
 
@@ -130,11 +128,8 @@ process MaskRef {
     bgzip -c ${ref}.rpt.regions > ${ref}.rpt_mask.gz
 	echo '##INFO=<ID=RPT,Number=1,Type=Integer,Description="Flag for variant in repetitive region">' > ${ref}.rpt_mask.hdr
 	tabix -s1 -b2 -e3 ${ref}.rpt_mask.gz
-
     """
 }
-
-
 
 /* map to reference sequence */
 process Map2Ref {
@@ -314,12 +309,13 @@ process Consensus{
 	set pair_id, file("${pair_id}.snps-filter.vcf.gz"), file("${pair_id}.snps-filter.vcf.gz.csi"), file("${pair_id}.zero-cov.vcf.gz"), file("${pair_id}.zero-cov.vcf.gz.csi") from filtered
 
 	output:
-	set pair_id, file("${pair_id}.fasta") into consensus
+	file("${pair_id}.fasta.gz")
 
 	"""
 	cat $ref | ${BCFTOOLS}/bcftools consensus -H 1 -M "N" ${pair_id}.snps-filter.vcf.gz > ${pair_id}.tmp.fa
 	${SAMTOOLS}/samtools faidx ${pair_id}.tmp.fa
-	cat ${pair_id}.tmp.fa | ${BCFTOOLS}/bcftools consensus -H 1 -M "-" ${pair_id}.zero-cov.vcf.gz | sed '/^>/ s/.*/>${pair_id}/' - > ${pair_id}.fa  >  ${pair_id}.fasta
+	cat ${pair_id}.tmp.fa | ${BCFTOOLS}/bcftools consensus -H 1 -M "-" ${pair_id}.zero-cov.vcf.gz | sed '/^>/ s/.*/> ${pair_id}/' - > ${pair_id}.fasta
+	gzip ${pair_id}.fasta
 	"""
 }
 
@@ -370,13 +366,12 @@ process IDnonbovis{
 
 	input:
 	set pair_id, file('outcome.txt'), file("${pair_id}_trim_R1.fastq"), file("${pair_id}_trim_R2.fastq") from IDdata
-	val lowmem from lowmem
 
 	output:
 	set pair_id, file("${pair_id}_kraken2.tab") into IDnonbovis
 
 	"""
-	${KRAKEN2}/kraken2 --threads 2 --quick $lowmem --db $kraken2db --output - --report ${pair_id}_kraken2.tab --paired ${pair_id}_trim_R1.fastq  ${pair_id}_trim_R2.fastq 
+	${KRAKEN2}/kraken2 --threads 2 --quick --db $kraken2db --output - --report ${pair_id}_kraken2.tab --paired ${pair_id}_trim_R1.fastq  ${pair_id}_trim_R2.fastq 
 	"""
 }
 
